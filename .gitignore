@@ -1,0 +1,20 @@
+# Environnement
+.env
+venv/
+__pycache__/
+*.pyc
+
+# Docker
+postgres_data/
+
+# IDE
+.vscode/
+.idea/
+
+# Système
+.DS_Store
+Thumbs.db
+
+# Résultats de scan (potentiellement volumineux/sensibles)
+*.json
+!requirements.txt

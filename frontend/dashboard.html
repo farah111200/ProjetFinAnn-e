@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <script src="js/theme.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Pentest Platform — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/layout.css" />
+</head>
+<body>
+
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="mark">AI</div>
+      <div>
+        <div class="name">AI Pentest Platform</div>
+        <div class="sub">Vulnerability Assessment</div>
+      </div>
+    </div>
+
+    <nav class="nav-group">
+      <button class="nav-item active" data-view="dashboard">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></span>
+        Dashboard
+      </button>
+      <button class="nav-item" data-view="scans">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
+        Scans
+      </button>
+      <button class="nav-item" data-view="vulns">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l8 3v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V5l8-3z"/></svg></span>
+        Vulnérabilités
+      </button>
+      <button class="nav-item" data-view="schedules">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span>
+        Planification
+      </button>
+      <button class="nav-item" id="nav-audit" data-view="audit" style="display:none;">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h4"/></svg></span>
+        Journal d'audit
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="avatar" id="user-avatar">?</div>
+      <div class="who">
+        <div class="u" id="user-name">—</div>
+        <div class="r" id="user-role">—</div>
+      </div>
+      <button id="theme-toggle-btn" title="Changer de thème" data-theme-icon onclick="toggleTheme()"></button>
+      <button id="logout-btn" title="Se déconnecter">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- ============ VUE DASHBOARD ============ -->
+    <div id="view-dashboard" class="view active">
+      <div class="page-header">
+        <h1>Dashboard</h1>
+        <p>Vue d'ensemble de tes évaluations de sécurité</p>
+      </div>
+
+      <div class="stats-row" id="stats-row"></div>
+
+      <div class="charts-row">
+        <div class="card">
+          <div class="section-title" style="margin-top:0;">Tendance des vulnérabilités</div>
+          <div class="chart-wrap"><canvas id="trend-chart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="section-title" style="margin-top:0;">Répartition par sévérité</div>
+          <div class="chart-wrap"><canvas id="severity-doughnut"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title" style="margin-top:0;">Scans récents</div>
+        <div id="recent-scans-list">Chargement...</div>
+      </div>
+    </div>
+
+    <!-- ============ VUE SCANS ============ -->
+    <div id="view-scans" class="view">
+      <div id="scans-list-panel">
+        <div class="page-header">
+          <h1>Scans</h1>
+          <p>Lance et consulte tes évaluations de vulnérabilités</p>
+        </div>
+
+        <div class="card">
+          <div class="section-title" style="margin-top:0;">Nouveau scan</div>
+          <form id="scan-form">
+            <input type="text" id="scan-target" placeholder="URL de l’application (ex: https://exemple.com) ou IP pour Nmap" required />
+            <select id="scan-tool">
+              <option value="zap">OWASP ZAP (recommandé — pentest web)</option>
+              <option value="nuclei">Nuclei (templates de vulnérabilités)</option>
+              <option value="nmap">Nmap (reconnaissance réseau complémentaire)</option>
+            </select>
+            <button type="submit" class="btn">Lancer le scan</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="section-title" style="margin-top:0;">Historique des scans</div>
+          <div id="scan-list">Chargement...</div>
+        </div>
+      </div>
+
+      <div id="scan-detail-panel" style="display:none;"></div>
+    </div>
+
+    <!-- ============ VUE VULNÉRABILITÉS ============ -->
+    <div id="view-vulns" class="view">
+      <div class="page-header">
+        <h1>Vulnérabilités</h1>
+        <p>Toutes les vulnérabilités détectées, tous scans confondus</p>
+      </div>
+      <div class="card">
+        <table class="vuln-table" id="all-vulns-table">
+          <thead>
+            <tr><th>Sévérité</th><th>Vulnérabilité</th><th>CVE</th><th>Outil</th><th>Cible</th></tr>
+          </thead>
+          <tbody id="all-vulns-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============ VUE PLANIFICATION ============ -->
+    <div id="view-schedules" class="view">
+      <div class="page-header">
+        <h1>Planification</h1>
+        <p>Programme des scans récurrents</p>
+      </div>
+      <div class="card">
+        <div class="section-title" style="margin-top:0;">Nouveau scan planifié</div>
+        <form id="schedule-form">
+          <input type="text" id="sched-target" placeholder="URL de l’application (ex: https://exemple.com)" required />
+          <select id="sched-frequency">
+            <option value="once">Une seule fois, à une date précise</option>
+            <option value="daily">Tous les jours, à partir de...</option>
+            <option value="weekly">Toutes les semaines, à partir de...</option>
+          </select>
+          <label class="field-label" for="sched-datetime" style="margin-top:2px;">Date et heure</label>
+          <input type="datetime-local" id="sched-datetime" required />
+          <select id="sched-tool">
+            <option value="zap">OWASP ZAP (recommandé — pentest web)</option>
+            <option value="nuclei">Nuclei (templates de vulnérabilités)</option>
+            <option value="nmap">Nmap (reconnaissance réseau complémentaire)</option>
+          </select>
+          <button type="submit" class="btn btn-secondary">Programmer</button>
+        </form>
+      </div>
+      <div class="card">
+        <div class="section-title" style="margin-top:0;">Scans planifiés actifs</div>
+        <div id="schedule-list">Chargement...</div>
+      </div>
+    </div>
+
+    <!-- ============ VUE AUDIT ============ -->
+    <div id="view-audit" class="view">
+      <div class="page-header">
+        <h1>Journal d'audit</h1>
+        <p>Historique des actions sensibles sur la plateforme (admin)</p>
+      </div>
+      <div class="card">
+        <div id="audit-list">Chargement...</div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Panneau latéral détail vulnérabilité -->
+<div class="side-panel-overlay" id="vuln-overlay" onclick="closeVulnPanel()"></div>
+<div class="side-panel" id="vuln-panel"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="js/api.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>

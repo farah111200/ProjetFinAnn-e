@@ -1,0 +1,78 @@
+version: "3.9"
+
+services:
+  backend:
+    build: ./backend
+    container_name: ai_pentest_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - zap
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - pentest_net
+
+  db:
+    image: postgres:16
+    container_name: ai_pentest_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - pentest_net
+
+  frontend:
+    image: nginx:alpine
+    container_name: ai_pentest_frontend
+    ports:
+      - "3000:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    networks:
+      - pentest_net
+
+  # Ollama : IA locale gratuite, alternative à Claude API (voir AI_PROVIDER dans .env)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ai_pentest_ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - pentest_net
+
+  # OWASP ZAP en mode daemon, exposant son API REST sur le port 8080.
+  # Le backend l'appelle via ZAP_API_URL=http://zap:8080 (voir .env).
+  zap:
+    image: ghcr.io/zaproxy/zaproxy:stable
+    container_name: ai_pentest_zap
+    command: zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.disablekey=true -config api.addrs.addr.name=.* -config api.addrs.addr.regex=true
+    ports:
+      - "8080:8080"
+    volumes:
+      - zap_data:/home/zap/.ZAP
+    networks:
+      - pentest_net
+
+volumes:
+  postgres_data:
+  ollama_data:
+  zap_data:
+
+networks:
+  # Réseau interne dédié : la VM cible (montée séparément en VirtualBox,
+  # réseau Host-only) doit être joignable depuis ce réseau pour être scannée.
+  pentest_net:
+    driver: bridge

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <script src="js/theme.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Pentest Platform — Connexion</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/auth.css" />
+  <style>body{margin:0;}</style>
+</head>
+<body>
+
+  <div class="status-pill">
+    <span class="status-dot"></span>
+    <span id="status-text">Vérification...</span>
+  </div>
+
+  <div class="auth-v2">
+    <div class="brand-header">
+      <div class="eyebrow">AI POWERED SECURITY</div>
+      <h1 class="brand-title">AI Pentest <span class="grad">Platform</span></h1>
+      <p class="brand-tagline">
+        Automated. Intelligent. Actionable. Une plateforme de pentest alimentée par
+        l'IA pour des analyses de sécurité avancées et des rapports intelligents.
+      </p>
+    </div>
+
+    <div class="form-panel">
+      <div class="auth-card-v2">
+        <div class="shield-wrap">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#c4b5fd" stroke-width="1.8">
+            <path d="M12 2l8 3v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V5l8-3z"/>
+            <path d="M9.5 12l2 2 4-4" stroke="#93c5fd"/>
+          </svg>
+        </div>
+        <h2>Bienvenue !</h2>
+        <p class="sub" id="auth-sub">Connectez-vous à votre compte</p>
+
+        <div class="tabs-v2">
+          <button class="tab-v2 active" id="tab-login" type="button">Connexion</button>
+          <button class="tab-v2" id="tab-register" type="button">Inscription</button>
+        </div>
+
+        <div id="error" class="error-msg" style="display:none;"></div>
+
+        <form id="login-form" class="form-v2 active">
+          <div class="field-v2">
+            <label for="username">Nom d'utilisateur</label>
+            <div class="input-wrap">
+              <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg></span>
+              <input type="text" id="username" placeholder="Entrez votre nom d'utilisateur" required />
+            </div>
+          </div>
+          <div class="field-v2">
+            <label for="password">Mot de passe</label>
+            <div class="input-wrap">
+              <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
+              <input type="password" id="password" placeholder="Entrez votre mot de passe" required />
+              <button type="button" class="toggle-eye" data-target="password"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+          </div>
+          <div class="row-between">
+            <label class="remember-me"><input type="checkbox" id="remember-me" style="margin:0;" /> Se souvenir de moi</label>
+            <span class="link-muted" id="forgot-link">Mot de passe oublié ?</span>
+          </div>
+          <button type="submit" class="btn-gradient">Se connecter →</button>
+        </form>
+
+        <form id="register-form" class="form-v2">
+          <div class="field-v2">
+            <label for="reg-username">Nom d'utilisateur</label>
+            <div class="input-wrap">
+              <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg></span>
+              <input type="text" id="reg-username" placeholder="ex. jook" required minlength="3" />
+            </div>
+          </div>
+          <div class="field-v2">
+            <label for="reg-email">Email</label>
+            <div class="input-wrap">
+              <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></span>
+              <input type="email" id="reg-email" placeholder="vous@exemple.com" required />
+            </div>
+          </div>
+          <div class="field-v2">
+            <label for="reg-org">Organisation <span style="color:#6b6880;">(optionnel)</span></label>
+            <div class="input-wrap">
+              <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 8h1M14 8h1M9 12h1M14 12h1M9 16h1M14 16h1"/></svg></span>
+              <input type="text" id="reg-org" placeholder="ex. Mon école, mon entreprise" />
+            </div>
+          </div>
+          <div class="field-v2">
+            <label for="reg-password">Mot de passe</label>
+            <div class="input-wrap">
+              <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
+              <input type="password" id="reg-password" placeholder="8 caractères minimum" required minlength="8" />
+              <button type="button" class="toggle-eye" data-target="reg-password"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+          </div>
+          <div class="field-v2">
+            <label for="reg-password-confirm">Confirmer le mot de passe</label>
+            <div class="input-wrap">
+              <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
+              <input type="password" id="reg-password-confirm" placeholder="Ressaisis ton mot de passe" required />
+              <button type="button" class="toggle-eye" data-target="reg-password-confirm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+            <p class="field-hint" id="password-match-hint" style="display:none;">Les mots de passe ne correspondent pas.</p>
+          </div>
+          <label class="terms-row">
+            <input type="checkbox" id="reg-terms" required />
+            <span>J'accepte que cette plateforme ne soit utilisée que sur des cibles que je suis autorisé à tester.</span>
+          </label>
+          <button type="submit" class="btn-gradient" id="register-submit">Créer le compte →</button>
+        </form>
+
+        <p class="switch-line" id="switch-line">Pas encore de compte ? <span class="link-muted" id="switch-to-register">S'inscrire</span></p>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script>
+    const errorBox = document.getElementById("error");
+    const tabLogin = document.getElementById("tab-login");
+    const tabRegister = document.getElementById("tab-register");
+    const formLogin = document.getElementById("login-form");
+    const formRegister = document.getElementById("register-form");
+    const authSub = document.getElementById("auth-sub");
+    const switchLine = document.getElementById("switch-line");
+    const switchToRegister = document.getElementById("switch-to-register");
+
+    function showError(msg) { errorBox.textContent = msg; errorBox.style.display = "block"; }
+    function clearError() { errorBox.style.display = "none"; }
+
+    function switchTab(target) {
+      clearError();
+      const loginActive = target === "login";
+      tabLogin.classList.toggle("active", loginActive);
+      tabRegister.classList.toggle("active", !loginActive);
+      formLogin.classList.toggle("active", loginActive);
+      formRegister.classList.toggle("active", !loginActive);
+      authSub.textContent = loginActive ? "Connectez-vous à votre compte" : "Créez votre compte en quelques secondes";
+      switchLine.style.display = loginActive ? "block" : "none";
+    }
+
+    tabLogin.addEventListener("click", () => switchTab("login"));
+    tabRegister.addEventListener("click", () => switchTab("register"));
+    switchToRegister.addEventListener("click", () => switchTab("register"));
+
+    document.querySelectorAll(".toggle-eye").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const input = document.getElementById(btn.dataset.target);
+        input.type = input.type === "password" ? "text" : "password";
+      });
+    });
+
+    document.getElementById("forgot-link").addEventListener("click", () => {
+      showError("La réinitialisation de mot de passe n'est pas encore disponible. Contacte l'administrateur de la plateforme.");
+    });
+
+    const savedUser = localStorage.getItem("remembered_username");
+    if (savedUser) document.getElementById("username").value = savedUser;
+
+    formLogin.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      clearError();
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+      const remember = document.getElementById("remember-me").checked;
+      try {
+        await api.login(username, password);
+        if (remember) localStorage.setItem("remembered_username", username);
+        else localStorage.removeItem("remembered_username");
+        window.location.href = "dashboard.html";
+      } catch (err) {
+        showError(err.message || "Connexion impossible.");
+      }
+    });
+
+    const pwField = document.getElementById("reg-password");
+    const pwConfirm = document.getElementById("reg-password-confirm");
+    const pwHint = document.getElementById("password-match-hint");
+
+    function checkPasswordMatch() {
+      const mismatch = pwConfirm.value && pwField.value !== pwConfirm.value;
+      pwHint.style.display = mismatch ? "block" : "none";
+      return !mismatch;
+    }
+    pwField.addEventListener("input", checkPasswordMatch);
+    pwConfirm.addEventListener("input", checkPasswordMatch);
+
+    formRegister.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      clearError();
+      if (!checkPasswordMatch() || pwField.value !== pwConfirm.value) {
+        showError("Les mots de passe ne correspondent pas.");
+        return;
+      }
+      const username = document.getElementById("reg-username").value;
+      const email = document.getElementById("reg-email").value;
+      const organization = document.getElementById("reg-org").value;
+      const password = pwField.value;
+      try {
+        await api.register(username, email, password, organization);
+        await api.login(username, password);
+        window.location.href = "dashboard.html";
+      } catch (err) {
+        showError(err.message || "Inscription impossible.");
+      }
+    });
+
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/stats/public`);
+        await res.json();
+        document.getElementById("status-text").textContent = "Système opérationnel";
+      } catch {
+        document.getElementById("status-text").textContent = "Backend injoignable";
+      }
+    })();
+  </script>
+</body>
+</html>
