@@ -76,7 +76,13 @@ const api = {
     window.URL.revokeObjectURL(url);
   },
   getAllVulnerabilities() { return this.request("/scans/vulnerabilities"); },
+  updateVulnerabilityStatus(vulnId, status) {
+    return this.request(`/scans/vulnerabilities/${vulnId}/status`, {
+      method: "PATCH", body: JSON.stringify({ status }),
+    });
+  },
   pollScan(id) { return this.request(`/scans/${id}`); },
+  compareScan(id) { return this.request(`/scans/${id}/compare`); },
   getScan(id) { return this.request(`/scans/${id}`); },
   createScan(url, scanner) {
     return this.request("/scans", { method: "POST", body: JSON.stringify({ url, scanner }) });

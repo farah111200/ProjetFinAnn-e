@@ -19,10 +19,11 @@ RUN apt-get update && apt-get install -y \
 
 # Installe Nuclei (scanner de vulnérabilités basé sur des templates)
 ENV GOPATH=/root/go
-ENV PATH=$PATH:/root/go/bin
+ENV PATH=/root/go/bin:$PATH
 RUN go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest \
     && nuclei -update-templates || true
-
+RUN go install github.com/projectdiscovery/subfinder/v2/cmd/subfinder@v2.6.6 \
+    && go install github.com/projectdiscovery/httpx/cmd/httpx@v1.6.8
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 

@@ -152,6 +152,10 @@ input:focus, select:focus { border-color: var(--accent); }
 .badge-running { background: var(--accent-dim); color: var(--accent); }
 .badge-done { background: rgba(107, 203, 119, 0.12); color: var(--success); }
 .badge-failed { background: var(--danger-dim); color: var(--danger); }
+.badge-status-open { background: var(--danger-dim); color: var(--danger); }
+.badge-status-in_progress { background: var(--warning-dim); color: var(--warning); }
+.badge-status-fixed { background: rgba(107, 203, 119, 0.12); color: var(--success); }
+.badge-status-false_positive { background: var(--surface-2); color: var(--text-secondary); }
 
 .scan-row {
   display: grid;
@@ -183,4 +187,39 @@ input:focus, select:focus { border-color: var(--accent); }
   margin: 1.5rem 0 0.75rem;
 }
 .chart-wrap { position: relative; height: 240px; margin-bottom: 1rem; }
+
+.scanner-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.scanner-option {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 1 1 160px;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.scanner-option:hover { border-color: var(--text-secondary); }
+.scanner-option:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+.scanner-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.scanner-option-content { display: flex; flex-direction: column; gap: 1px; }
+.scanner-option-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.scanner-option-sub { font-size: 11px; color: var(--text-secondary); }
 

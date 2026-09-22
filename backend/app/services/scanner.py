@@ -9,22 +9,25 @@ Deux modes d'exécution, contrôlés par SCAN_MODE dans .env :
 Le reste du code (parsing, format des findings) est identique dans les deux
 cas — seul le point d'exécution de la commande change.
 """
+import re
 import subprocess
 import time
 import requests
 import xml.etree.ElementTree as ET
-from typing import List, Dict
+from typing import List, Dict, Optional
 from app.core.config import settings
 from app.services.kali_executor import run_remote_command
 
 
-def _execute(command: List[str], timeout: int) -> str:
+def _execute(command: List[str], timeout: int, stdin_data: Optional[str] = None) -> str:
     """Exécute la commande localement ou sur Kali selon SCAN_MODE, retourne
-    la sortie standard (stdout) sous forme de texte."""
+    la sortie standard (stdout) sous forme de texte. `stdin_data`, si fourni,
+    est écrit sur l'entrée standard de la commande (ex: liste d'hôtes pour
+    httpx) — géré dans les deux modes."""
     if settings.SCAN_MODE == "kali":
-        stdout, stderr = run_remote_command(command, timeout=timeout)
+        stdout, stderr = run_remote_command(command, timeout=timeout, stdin_data=stdin_data)
         return stdout
-    result = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
+    result = subprocess.run(command, capture_output=True, text=True, timeout=timeout, input=stdin_data)
     return result.stdout
 
 
@@ -179,10 +182,98 @@ def run_zap_scan(target: str) -> List[Dict]:
     return findings
 
 
+def _clean_domain(target: str) -> str:
+    """Extrait le nom d'hôte nu (sans schéma ni port ni chemin) d'une cible,
+    ex: 'https://api.example.com:8080/path' -> 'api.example.com'."""
+    stripped = re.sub(r"^https?://", "", target.strip())
+    return stripped.split("/")[0].split(":")[0]
+
+
+MAX_SUBDOMAINS_PROBED = 50  # borne le temps du scan (httpx sonde chaque hôte un par un)
+
+
+def run_subfinder(domain: str) -> List[str]:
+    """Énumère les sous-domaines connus via des sources passives (subfinder :
+    certificate transparency, DNS public, etc. — aucune requête active sur la
+    cible). Best-effort : si l'outil est absent ou échoue, on retombe sur le
+    domaine racine seul plutôt que de faire échouer tout le scan."""
+    try:
+        stdout = _execute(["subfinder", "-d", domain, "-silent"], timeout=120)
+        subs = sorted({line.strip() for line in stdout.splitlines() if line.strip()})
+        if domain not in subs:
+            subs.insert(0, domain)
+        return subs
+    except (subprocess.TimeoutExpired, FileNotFoundError, RuntimeError):
+        return [domain]
+
+
+def run_httpx_probe(hosts: List[str]) -> List[Dict]:
+    """Sonde chaque hôte en HTTP(S) (httpx) : code de statut, titre de page,
+    IP résolue et technologies détectées via empreintes (serveur web, CMS,
+    framework...). Les hôtes sont envoyés sur l'entrée standard de httpx,
+    un par ligne — c'est le mode d'utilisation normal de l'outil."""
+    import json as _json
+
+    if not hosts:
+        return []
+    hosts = hosts[:MAX_SUBDOMAINS_PROBED]
+    stdin_data = "\n".join(
+        host if host.startswith(("http://", "https://")) else f"https://{host}"
+        for host in hosts
+    ) + "\n"
+    findings: List[Dict] = []
+
+    try:
+        stdout = _execute(
+            ["httpx", "-silent", "-json", "-title", "-tech-detect", "-status-code", "-timeout", "8"],
+            timeout=180,
+            stdin_data=stdin_data,
+        )
+        for line in stdout.strip().splitlines():
+            if not line:
+                continue
+            try:
+                data = _json.loads(line)
+            except _json.JSONDecodeError:
+                continue
+            a_records = data.get("a") or []
+            findings.append({
+                "subdomain": data.get("input") or data.get("host"),
+                "url": data.get("url"),
+                "ip_address": a_records[0] if a_records else None,
+                "http_status": data.get("status_code"),
+                "title": data.get("title"),
+                "technologies": ", ".join(data.get("tech", [])) or None,
+                "source_tool": "recon" if settings.SCAN_MODE == "local" else "recon (kali)",
+            })
+    except subprocess.TimeoutExpired:
+        findings.append({"error": "La sonde HTTP (httpx) a dépassé le délai imparti (3 min)."})
+    except FileNotFoundError:
+        findings.append({"error": "httpx n'est pas installé dans ce conteneur."})
+    except RuntimeError as e:
+        findings.append({"error": str(e)})
+
+    return findings
+
+
+def run_recon_scan(target: str) -> List[Dict]:
+    """Reconnaissance de la surface d'attaque : énumère les sous-domaines
+    (subfinder) puis sonde chacun en HTTP (httpx) pour produire un inventaire
+    d'actifs exposés (hôte, IP, statut, titre, technologies). Contrairement
+    aux autres scanners, ce n'est pas un jugement de vulnérabilité — c'est de
+    l'inventaire brut, stocké tel quel (voir AttackSurfaceAsset), qui peut
+    ensuite nourrir un scan nmap/nuclei/zap ciblé ou une future couche de
+    corrélation IA."""
+    domain = _clean_domain(target)
+    subdomains = run_subfinder(domain)
+    return run_httpx_probe(subdomains)
+
+
 SCANNERS = {
     "nmap": run_nmap_scan,
     "nuclei": run_nuclei_scan,
     "zap": run_zap_scan,
+    "recon": run_recon_scan,
 }
 
 

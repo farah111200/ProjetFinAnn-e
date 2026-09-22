@@ -1,3 +1,4 @@
+
 version: "3.9"
 
 services:
@@ -42,17 +43,6 @@ services:
     networks:
       - pentest_net
 
-  # Ollama : IA locale gratuite, alternative à Claude API (voir AI_PROVIDER dans .env)
-  ollama:
-    image: ollama/ollama:latest
-    container_name: ai_pentest_ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    networks:
-      - pentest_net
-
   # OWASP ZAP en mode daemon, exposant son API REST sur le port 8080.
   # Le backend l'appelle via ZAP_API_URL=http://zap:8080 (voir .env).
   zap:
@@ -68,7 +58,6 @@ services:
 
 volumes:
   postgres_data:
-  ollama_data:
   zap_data:
 
 networks:

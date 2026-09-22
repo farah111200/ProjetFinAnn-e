@@ -1,6 +1,8 @@
 if (!api.token()) window.location.href = "index.html";
 
 const severityLabel = { critical: "Critique", high: "Élevée", medium: "Moyenne", low: "Faible" };
+const vulnStatusLabel = { open: "Ouverte", in_progress: "En cours", fixed: "Corrigée", false_positive: "Faux positif" };
+let currentScanId = null;
 const severityColor = { critical: "#a32d2d", high: "#854f0b", medium: "#854f0b", low: "#185fa5" };
 const statusLabel = { running: "En cours", done: "Terminé", failed: "Échoué", pending: "En attente" };
 
@@ -28,6 +30,31 @@ function fmtDuration(startIso, endIso) {
   if (seconds < 60) return `${seconds}s`;
   return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
 }
+
+// ============ GROUPES DE CASES À COCHER À CHOIX UNIQUE ============
+// Visuellement des cases à cocher, mais un seul scanner actif à la fois :
+// cocher une case décoche automatiquement les autres, et décocher la seule
+// case active est ignoré (on garde toujours un choix sélectionné).
+function setupSingleCheckboxGroup(groupId) {
+  const group = document.getElementById(groupId);
+  const boxes = Array.from(group.querySelectorAll('input[type="checkbox"]'));
+  boxes.forEach((box) => {
+    box.addEventListener("change", () => {
+      if (box.checked) {
+        boxes.forEach((b) => { if (b !== box) b.checked = false; });
+      } else {
+        box.checked = true;
+      }
+    });
+  });
+}
+function getCheckedValue(groupId) {
+  const group = document.getElementById(groupId);
+  const checked = group.querySelector('input[type="checkbox"]:checked');
+  return checked ? checked.value : null;
+}
+setupSingleCheckboxGroup("scan-tool-group");
+setupSingleCheckboxGroup("sched-tool-group");
 
 // ============ NAVIGATION ============
 document.querySelectorAll(".nav-item").forEach((btn) => {
@@ -246,8 +273,14 @@ async function viewScan(id) {
 
 async function renderScanDetail(id, preloaded) {
   const scan = preloaded || await api.getScan(id);
+  currentScanId = scan.id;
   const counts = { critical: 0, high: 0, medium: 0, low: 0 };
   scan.vulnerabilities.forEach((v) => { if (counts[v.severity] !== undefined) counts[v.severity]++; });
+
+  let comparison = null;
+  if (scan.status === "done" && scan.scanner !== "recon") {
+    try { comparison = await api.compareScan(scan.id); } catch (e) { /* pas grave, pas de comparaison affichée */ }
+  }
 
   let rawParsed = [];
   try { rawParsed = scan.raw_output ? JSON.parse(scan.raw_output) : []; } catch (e) { /* ignore */ }
@@ -284,15 +317,37 @@ async function renderScanDetail(id, preloaded) {
       <div class="tab-bar">
         <button class="tab-btn active" data-tab="overview">Overview</button>
         <button class="tab-btn" data-tab="vulns">Vulnérabilités (${scan.vulnerabilities.length})</button>
+        ${scan.scanner === "recon" ? `<button class="tab-btn" data-tab="surface">Surface d'attaque (${scan.attack_surface.length})</button>` : ""}
         <button class="tab-btn" data-tab="raw">Résultats bruts</button>
         <button class="tab-btn" data-tab="timeline">Timeline</button>
       </div>
 
       <div class="tab-panel active" data-panel="overview">
+        ${comparison ? `
+          <div style="display:flex; align-items:center; gap:16px; padding:12px 14px; margin-bottom:1rem; background:var(--surface-1); border-radius:var(--radius);">
+            ${comparison.previous_scan_id ? `
+              <div style="font-size:20px; font-weight:600; font-family:var(--mono);">
+                ${comparison.previous_score} → ${comparison.current_score}
+                <span style="font-size:13px; font-weight:500; color:${comparison.score_delta >= 0 ? "var(--success)" : "var(--danger)"};">
+                  (${comparison.score_delta >= 0 ? "+" : ""}${comparison.score_delta})
+                </span>
+              </div>
+              <div style="font-size:12px; color:var(--text-secondary); line-height:1.5;">
+                Score de sécurité — comparé au scan du ${fmtDate(comparison.previous_scan_date)}<br/>
+                ${comparison.new_vulnerabilities.length} nouvelle(s) · ${comparison.resolved_vulnerabilities.length} corrigée(s) · ${comparison.still_open_count} toujours ouverte(s)
+              </div>
+            ` : `
+              <div style="font-size:20px; font-weight:600; font-family:var(--mono);">${comparison.current_score}/100</div>
+              <div style="font-size:12px; color:var(--text-secondary);">Score de sécurité — premier scan sur cette cible, pas encore de comparaison possible</div>
+            `}
+          </div>
+        ` : ""}
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
           <div>
             <p style="font-size:13px; color:var(--text-secondary); margin:0 0 10px;">
-              ${scan.vulnerabilities.length} vulnérabilité(s) détectée(s) — durée : ${fmtDuration(scan.date, scan.finished_at)}
+              ${scan.scanner === "recon"
+                ? `${scan.attack_surface.length} actif(s) découvert(s)`
+                : `${scan.vulnerabilities.length} vulnérabilité(s) détectée(s)`} — durée : ${fmtDuration(scan.date, scan.finished_at)}
             </p>
             ${["critical","high","medium","low"].map((s) => `
               <div style="display:flex; justify-content:space-between; font-size:13px; padding:5px 0; border-bottom:0.5px solid var(--border);">
@@ -308,12 +363,13 @@ async function renderScanDetail(id, preloaded) {
       <div class="tab-panel" data-panel="vulns">
         ${scan.vulnerabilities.length ? `
           <table class="vuln-table">
-            <thead><tr><th>Sévérité</th><th>Vulnérabilité</th><th>CVE</th><th>Outil</th></tr></thead>
+            <thead><tr><th>Sévérité</th><th>Vulnérabilité</th><th>Statut</th><th>CVE</th><th>Outil</th></tr></thead>
             <tbody>
               ${scan.vulnerabilities.map((v) => `
                 <tr onclick='openVulnPanel(${JSON.stringify(v).replace(/'/g, "&apos;")})'>
                   <td><span class="badge badge-${v.severity}">${severityLabel[v.severity] || v.severity}</span></td>
                   <td>${v.name}</td>
+                  <td><span class="badge badge-status-${v.status || "open"}">${vulnStatusLabel[v.status] || "Ouverte"}</span></td>
                   <td>${identifierBadge(v)}</td>
                   <td style="color:var(--text-secondary);">${v.source_tool || "—"}</td>
                 </tr>
@@ -324,6 +380,29 @@ async function renderScanDetail(id, preloaded) {
           ? `<p style="color:var(--text-secondary); font-size:14px;">Scan en cours, les résultats apparaîtront ici automatiquement...</p>`
           : `<p style="color:var(--text-secondary); font-size:14px;">Aucune vulnérabilité détectée.</p>`}
       </div>
+
+      ${scan.scanner === "recon" ? `
+      <div class="tab-panel" data-panel="surface">
+        ${scan.attack_surface.length ? `
+          <table class="vuln-table">
+            <thead><tr><th>Sous-domaine</th><th>Statut</th><th>Titre</th><th>Technologies</th><th>IP</th></tr></thead>
+            <tbody>
+              ${scan.attack_surface.map((a) => `
+                <tr>
+                  <td>${a.url ? `<a href="${a.url}" target="_blank" rel="noopener" style="color:var(--accent);">${a.subdomain}</a>` : a.subdomain}</td>
+                  <td>${a.http_status ?? "—"}</td>
+                  <td style="color:var(--text-secondary);">${a.title || "—"}</td>
+                  <td style="color:var(--text-secondary);">${a.technologies || "—"}</td>
+                  <td style="color:var(--text-secondary); font-family:var(--mono);">${a.ip_address || "—"}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        ` : scan.status === "running"
+          ? `<p style="color:var(--text-secondary); font-size:14px;">Reconnaissance en cours, les actifs découverts apparaîtront ici automatiquement...</p>`
+          : `<p style="color:var(--text-secondary); font-size:14px;">Aucun actif découvert.</p>`}
+      </div>
+      ` : ""}
 
       <div class="tab-panel" data-panel="raw">
         ${rawParsed.length ? `
@@ -417,6 +496,15 @@ function openVulnPanel(v) {
     <h3 style="margin:10px 0 4px;">${v.name}</h3>
     <p style="margin:0 0 10px;">${cveLine}</p>
 
+    <div class="side-block" style="margin-bottom:14px;">
+      <div class="h">Statut de traitement</div>
+      <select id="vuln-status-select" style="margin:6px 0 0;">
+        ${Object.entries(vulnStatusLabel).map(([val, label]) =>
+          `<option value="${val}" ${v.status === val ? "selected" : ""}>${label}</option>`
+        ).join("")}
+      </select>
+    </div>
+
     <div class="side-tab-bar">
       <button class="side-tab-btn active" data-stab="ai">Analyse IA</button>
       <button class="side-tab-btn" data-stab="tech">Détails techniques</button>
@@ -451,6 +539,20 @@ function openVulnPanel(v) {
     });
   });
 
+  const statusSelect = document.getElementById("vuln-status-select");
+  const previousStatus = v.status;
+  statusSelect.addEventListener("change", async (e) => {
+    const newStatus = e.target.value;
+    try {
+      await api.updateVulnerabilityStatus(v.id, newStatus);
+      showToast("Statut mis à jour.");
+      if (currentScanId) await renderScanDetail(currentScanId);
+    } catch (err) {
+      showToast(err.message || "Impossible de mettre à jour le statut.", true);
+      statusSelect.value = previousStatus;
+    }
+  });
+
   document.getElementById("vuln-overlay").classList.add("open");
   document.getElementById("vuln-panel").classList.add("open");
 }
@@ -462,7 +564,7 @@ function closeVulnPanel() {
 document.getElementById("scan-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const url = document.getElementById("scan-target").value;
-  const scanner = document.getElementById("scan-tool").value;
+  const scanner = getCheckedValue("scan-tool-group");
   try {
     const created = await api.createScan(url, scanner);
     document.getElementById("scan-target").value = "";
@@ -514,7 +616,7 @@ document.getElementById("schedule-form").addEventListener("submit", async (e) =>
   e.preventDefault();
   const target = document.getElementById("sched-target").value;
   const frequency = document.getElementById("sched-frequency").value;
-  const scanner = document.getElementById("sched-tool").value;
+  const scanner = getCheckedValue("sched-tool-group");
   const datetimeValue = document.getElementById("sched-datetime").value; // ex: 2026-07-25T14:30
   const scheduledAt = datetimeValue ? new Date(datetimeValue).toISOString() : null;
   try {

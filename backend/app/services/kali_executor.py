@@ -5,10 +5,12 @@ import paramiko
 from app.core.config import settings
 
 
-def run_remote_command(command: list[str], timeout: int = 300) -> tuple[str, str]:
+def run_remote_command(command: list[str], timeout: int = 300, stdin_data: str | None = None) -> tuple[str, str]:
     """Se connecte en SSH à la VM Kali, exécute la commande, retourne (stdout, stderr).
     Lève une exception explicite si la connexion échoue (IP incorrecte, SSH
-    désactivé sur Kali, mauvais identifiants...)."""
+    désactivé sur Kali, mauvais identifiants...). `stdin_data`, si fourni, est
+    écrit sur l'entrée standard distante avant de lire la sortie (ex: liste
+    d'hôtes pour httpx)."""
     if not settings.KALI_HOST:
         raise RuntimeError(
             "KALI_HOST n'est pas configuré dans .env. "
@@ -28,6 +30,9 @@ def run_remote_command(command: list[str], timeout: int = 300) -> tuple[str, str
         )
         cmd_str = " ".join(command)
         stdin, stdout, stderr = client.exec_command(cmd_str, timeout=timeout)
+        if stdin_data:
+            stdin.write(stdin_data)
+            stdin.channel.shutdown_write()
         out = stdout.read().decode(errors="replace")
         err = stderr.read().decode(errors="replace")
         return out, err

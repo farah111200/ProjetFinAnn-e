@@ -32,6 +32,15 @@ def validate_target(value: str) -> str:
     )
 
 
+VALID_SCANNERS = {"zap", "nuclei", "nmap", "recon"}
+
+
+def validate_scanner(value: str) -> str:
+    if value not in VALID_SCANNERS:
+        raise ValueError(f"Scanner invalide. Options : {sorted(VALID_SCANNERS)}.")
+    return value
+
+
 def validate_password_strength(value: str) -> str:
     if len(value) < 8:
         raise ValueError("Le mot de passe doit contenir au moins 8 caractères.")
@@ -98,6 +107,37 @@ class VulnerabilityOut(BaseModel):
     cve_id: Optional[str] = None
     cwe_id: Optional[str] = None
     cvss_score: Optional[float] = None
+    status: str = "open"
+    detected_at: datetime
+
+
+VALID_VULN_STATUSES = {"open", "in_progress", "fixed", "false_positive"}
+
+
+class VulnerabilityStatusUpdate(BaseModel):
+    status: str
+
+    @field_validator("status")
+    @classmethod
+    def status_valid(cls, v: str) -> str:
+        if v not in VALID_VULN_STATUSES:
+            raise ValueError(f"Statut invalide. Options : {sorted(VALID_VULN_STATUSES)}.")
+        return v
+
+
+# ---------- Attack surface (scanner="recon") ----------
+
+class AttackSurfaceAssetOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    subdomain: str
+    url: Optional[str] = None
+    ip_address: Optional[str] = None
+    http_status: Optional[int] = None
+    title: Optional[str] = None
+    technologies: Optional[str] = None
+    source_tool: Optional[str] = None
     detected_at: datetime
 
 
@@ -105,12 +145,17 @@ class VulnerabilityOut(BaseModel):
 
 class ScanCreate(BaseModel):
     url: str
-    scanner: str = "zap"  # zap (par défaut, pentest web), nuclei, nmap (reconnaissance réseau complémentaire)
+    scanner: str = "zap"  # zap (pentest web), nuclei, nmap (réseau), recon (surface d'attaque)
 
     @field_validator("url")
     @classmethod
     def url_valid(cls, v: str) -> str:
         return validate_target(v)
+
+    @field_validator("scanner")
+    @classmethod
+    def scanner_valid(cls, v: str) -> str:
+        return validate_scanner(v)
 
 
 class ScanOut(BaseModel):
@@ -128,7 +173,20 @@ class ScanOut(BaseModel):
 
 class ScanDetailOut(ScanOut):
     vulnerabilities: List[VulnerabilityOut] = []
+    attack_surface: List[AttackSurfaceAssetOut] = []
     raw_output: Optional[str] = None
+
+
+class ScanComparisonOut(BaseModel):
+    current_scan_id: int
+    previous_scan_id: Optional[int] = None
+    previous_scan_date: Optional[datetime] = None
+    current_score: int
+    previous_score: Optional[int] = None
+    score_delta: Optional[int] = None
+    new_vulnerabilities: List[VulnerabilityOut] = []
+    resolved_vulnerabilities: List[VulnerabilityOut] = []
+    still_open_count: int = 0
 
 
 # ---------- Scheduled scans ----------
@@ -143,6 +201,11 @@ class ScheduledScanCreate(BaseModel):
     @classmethod
     def target_valid(cls, v: str) -> str:
         return validate_target(v)
+
+    @field_validator("scanner")
+    @classmethod
+    def scanner_valid(cls, v: str) -> str:
+        return validate_scanner(v)
 
 
 class ScheduledScanOut(BaseModel):

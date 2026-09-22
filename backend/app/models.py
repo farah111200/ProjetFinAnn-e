@@ -42,6 +42,7 @@ class Scan(Base):
 
     owner = relationship("User", back_populates="scans")
     vulnerabilities = relationship("Vulnerability", back_populates="scan", cascade="all, delete-orphan")
+    attack_surface = relationship("AttackSurfaceAsset", back_populates="scan", cascade="all, delete-orphan")
 
 
 class Vulnerability(Base):
@@ -57,9 +58,30 @@ class Vulnerability(Base):
     cve_id = Column(String, nullable=True)  # ex: CVE-2024-6387, si identifié
     cwe_id = Column(String, nullable=True)  # ex: CWE-693, classification ZAP (config/bonnes pratiques)
     cvss_score = Column(Float, nullable=True)  # ex: 9.8, si trouvé via NVD
+    status = Column(String, default="open")  # open, in_progress, fixed, false_positive
     detected_at = Column(DateTime(timezone=True), server_default=func.now())
 
     scan = relationship("Scan", back_populates="vulnerabilities")
+
+
+class AttackSurfaceAsset(Base):
+    """Un actif découvert par un scan de reconnaissance (scanner="recon") :
+    un sous-domaine sondé en HTTP, avec ce qu'on a pu observer dessus. Pas de
+    sévérité ici — c'est de l'inventaire, pas un jugement de vulnérabilité."""
+    __tablename__ = "attack_surface_assets"
+
+    id = Column(Integer, primary_key=True, index=True)
+    scan_id = Column(Integer, ForeignKey("scans.id"), nullable=False)
+    subdomain = Column(String, nullable=False)
+    url = Column(String, nullable=True)
+    ip_address = Column(String, nullable=True)
+    http_status = Column(Integer, nullable=True)
+    title = Column(String, nullable=True)
+    technologies = Column(String, nullable=True)  # liste séparée par virgules, ex: "Nginx, PHP, WordPress"
+    source_tool = Column(String, default="recon")
+    detected_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    scan = relationship("Scan", back_populates="attack_surface")
 
 
 class ScheduledScan(Base):

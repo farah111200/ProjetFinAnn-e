@@ -98,11 +98,36 @@
           <div class="section-title" style="margin-top:0;">Nouveau scan</div>
           <form id="scan-form">
             <input type="text" id="scan-target" placeholder="URL de l’application (ex: https://exemple.com) ou IP pour Nmap" required />
-            <select id="scan-tool">
-              <option value="zap">OWASP ZAP (recommandé — pentest web)</option>
-              <option value="nuclei">Nuclei (templates de vulnérabilités)</option>
-              <option value="nmap">Nmap (reconnaissance réseau complémentaire)</option>
-            </select>
+            <div class="scanner-choice" id="scan-tool-group">
+              <label class="scanner-option">
+                <input type="checkbox" name="scan-tool" value="zap" checked />
+                <span class="scanner-option-content">
+                  <span class="scanner-option-title">OWASP ZAP</span>
+                  <span class="scanner-option-sub">Pentest web</span>
+                </span>
+              </label>
+              <label class="scanner-option">
+                <input type="checkbox" name="scan-tool" value="nuclei" />
+                <span class="scanner-option-content">
+                  <span class="scanner-option-title">Nuclei</span>
+                  <span class="scanner-option-sub">Templates de vulnérabilités</span>
+                </span>
+              </label>
+              <label class="scanner-option">
+                <input type="checkbox" name="scan-tool" value="nmap" />
+                <span class="scanner-option-content">
+                  <span class="scanner-option-title">Nmap</span>
+                  <span class="scanner-option-sub">Reconnaissance réseau</span>
+                </span>
+              </label>
+              <label class="scanner-option">
+                <input type="checkbox" name="scan-tool" value="recon" />
+                <span class="scanner-option-content">
+                  <span class="scanner-option-title">Surface d'attaque</span>
+                  <span class="scanner-option-sub">Sous-domaines + technologies</span>
+                </span>
+              </label>
+            </div>
             <button type="submit" class="btn">Lancer le scan</button>
           </form>
         </div>
@@ -125,7 +150,7 @@
       <div class="card">
         <table class="vuln-table" id="all-vulns-table">
           <thead>
-            <tr><th>Sévérité</th><th>Vulnérabilité</th><th>CVE</th><th>Outil</th><th>Cible</th></tr>
+            <tr><th>Sévérité</th><th>Vulnérabilité</th><th>CVE/CWE</th><th>Outil</th><th>Cible</th></tr>
           </thead>
           <tbody id="all-vulns-tbody"></tbody>
         </table>
@@ -149,11 +174,36 @@
           </select>
           <label class="field-label" for="sched-datetime" style="margin-top:2px;">Date et heure</label>
           <input type="datetime-local" id="sched-datetime" required />
-          <select id="sched-tool">
-            <option value="zap">OWASP ZAP (recommandé — pentest web)</option>
-            <option value="nuclei">Nuclei (templates de vulnérabilités)</option>
-            <option value="nmap">Nmap (reconnaissance réseau complémentaire)</option>
-          </select>
+          <div class="scanner-choice" id="sched-tool-group">
+            <label class="scanner-option">
+              <input type="checkbox" name="sched-tool" value="zap" checked />
+              <span class="scanner-option-content">
+                <span class="scanner-option-title">OWASP ZAP</span>
+                <span class="scanner-option-sub">Pentest web</span>
+              </span>
+            </label>
+            <label class="scanner-option">
+              <input type="checkbox" name="sched-tool" value="nuclei" />
+              <span class="scanner-option-content">
+                <span class="scanner-option-title">Nuclei</span>
+                <span class="scanner-option-sub">Templates de vulnérabilités</span>
+              </span>
+            </label>
+            <label class="scanner-option">
+              <input type="checkbox" name="sched-tool" value="nmap" />
+              <span class="scanner-option-content">
+                <span class="scanner-option-title">Nmap</span>
+                <span class="scanner-option-sub">Reconnaissance réseau</span>
+              </span>
+            </label>
+            <label class="scanner-option">
+              <input type="checkbox" name="sched-tool" value="recon" />
+              <span class="scanner-option-content">
+                <span class="scanner-option-title">Surface d'attaque</span>
+                <span class="scanner-option-sub">Sous-domaines + technologies</span>
+              </span>
+            </label>
+          </div>
           <button type="submit" class="btn btn-secondary">Programmer</button>
         </form>
       </div>

@@ -1,12 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from datetime import datetime
 
 from app.database import get_db
 from app.models import User, UserRole
 from app.schemas import UserCreate, UserOut, Token
 from app.core.security import hash_password, verify_password, create_access_token
 from app.services.audit import log_action
+from app.services.login_throttle import check_lock, record_failure, remaining_attempts, reset as reset_throttle, LOCKOUT_MINUTES
 from app.dependencies import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -44,15 +46,36 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == form_data.username).first()
+    username = form_data.username
+
+    locked_until = check_lock(username)
+    if locked_until:
+        minutes_left = max(1, int((locked_until - datetime.utcnow()).total_seconds() // 60) + 1)
+        log_action(db, action="login_blocked", details=f"username={username}",
+                    ip_address=request.client.host if request.client else None)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Trop de tentatives échouées. Réessaie dans {minutes_left} minute(s).",
+        )
+
+    user = db.query(User).filter(User.username == username).first()
     if not user or not verify_password(form_data.password, user.password_hash):
+        new_lock = record_failure(username)
+        if new_lock:
+            log_action(db, action="account_locked", details=f"username={username}",
+                        ip_address=request.client.host if request.client else None)
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Trop de tentatives échouées. Compte bloqué {LOCKOUT_MINUTES} minutes.",
+            )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Nom d'utilisateur ou mot de passe incorrect.",
+            detail=f"Nom d'utilisateur ou mot de passe incorrect. ({remaining_attempts(username)} tentative(s) restante(s))",
         )
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Ce compte est désactivé.")
 
+    reset_throttle(username)
     token = create_access_token(data={"sub": str(user.id), "role": user.role.value})
     log_action(db, action="login", user_id=user.id, ip_address=request.client.host if request.client else None)
     return Token(access_token=token)

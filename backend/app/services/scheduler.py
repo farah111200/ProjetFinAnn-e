@@ -10,7 +10,7 @@ from app.services.scanner import run_scan
 from app.services.ai_analysis import analyze_findings, normalize_severity
 from app.services.cve_lookup import enrich_with_cve
 from app.services.audit import log_action
-from app.models import Vulnerability
+from app.models import Vulnerability, AttackSurfaceAsset
 from datetime import datetime
 
 jobstores = {"default": SQLAlchemyJobStore(url=settings.DATABASE_URL)}
@@ -39,27 +39,46 @@ def execute_scheduled_scan(scheduled_scan_id: int) -> None:
 
         findings = run_scan(scheduled.scanner, scheduled.target)
 
-        scan.current_step = "Analyse par l'IA"
-        db.commit()
+        if scheduled.scanner == "recon":
+            # Même logique que pour un scan lancé manuellement : inventaire
+            # d'actifs stocké directement, pas d'analyse IA.
+            assets = [f for f in findings if "error" not in f]
+            for asset in assets:
+                db.add(AttackSurfaceAsset(
+                    scan_id=scan.id,
+                    subdomain=asset.get("subdomain") or scheduled.target,
+                    url=asset.get("url"),
+                    ip_address=asset.get("ip_address"),
+                    http_status=asset.get("http_status"),
+                    title=asset.get("title"),
+                    technologies=asset.get("technologies"),
+                    source_tool=asset.get("source_tool", "recon"),
+                ))
+            scan.status = "done" if assets or not findings else "failed"
+            scan.current_step = "Terminé" if scan.status == "done" else "Échec du scan"
+        else:
+            scan.current_step = "Analyse par l'IA"
+            db.commit()
 
-        vulnerabilities = analyze_findings(findings)
-        vulnerabilities = enrich_with_cve(findings, vulnerabilities)
+            vulnerabilities = analyze_findings(findings)
+            vulnerabilities = enrich_with_cve(findings, vulnerabilities)
 
-        for vuln in vulnerabilities:
-            db.add(Vulnerability(
-                scan_id=scan.id,
-                name=vuln.get("name", "Vulnérabilité"),
-                severity=normalize_severity(vuln.get("severity", "medium")),
-                description=vuln.get("description"),
-                solution=vuln.get("solution"),
-                source_tool=vuln.get("source_tool"),
-                cve_id=vuln.get("cve_id"),
-                cwe_id=vuln.get("cwe_id"),
-                cvss_score=vuln.get("cvss_score"),
-            ))
+            for vuln in vulnerabilities:
+                db.add(Vulnerability(
+                    scan_id=scan.id,
+                    name=vuln.get("name", "Vulnérabilité"),
+                    severity=normalize_severity(vuln.get("severity", "medium")),
+                    description=vuln.get("description"),
+                    solution=vuln.get("solution"),
+                    source_tool=vuln.get("source_tool"),
+                    cve_id=vuln.get("cve_id"),
+                    cwe_id=vuln.get("cwe_id"),
+                    cvss_score=vuln.get("cvss_score"),
+                ))
+            scan.status = "done"
+            scan.current_step = "Terminé"
 
-        scan.status = "done"
-        scan.current_step = "Terminé"
+        scan.finished_at = datetime.utcnow()
         scheduled.last_run_at = datetime.utcnow()
 
         # Un scan "once" ne se redéclenche jamais après son unique exécution

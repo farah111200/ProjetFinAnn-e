@@ -11,5 +11,6 @@ paramiko==3.4.0
 requests==2.32.3
 anthropic==0.28.0
 weasyprint==62.1
+pydyf==0.10.0
 pydantic[email]==2.7.1
 python-dotenv==1.0.1
